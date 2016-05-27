@@ -1,13 +1,8 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/json"
-	"fmt"
-	"github.com/google/go-github/github"
 	"github.com/jonas747/discordgo"
-	"io/ioutil"
+	"github.com/turnage/graw"
 	"log"
 	"net/http"
 )
@@ -33,84 +28,40 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	go RunReddit()
+	go RunGithub()
+	select {}
+}
 
+func RunGithub() {
+	if len(config.Github) < 1 {
+		log.Println("No github sources defined, not running webhook server..")
+		return
+	}
+	log.Println("Starting github webhook server")
 	http.HandleFunc("/", handleGithub)
 	log.Println(http.ListenAndServe(config.Listen, nil))
 }
 
-func handleGithub(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.RequestURI)
-	event := r.Header.Get("X-GitHub-Event")
-
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	signature := r.Header.Get("X-Hub-Signature")
-
-	if !ValidateHMACDigest(data, signature, []byte(config.Secret)) {
-		log.Println("Invalid signature...")
+func RunReddit() {
+	if len(config.Reddit) < 1 {
+		log.Println("No reddit sources defined, not running reddit bot...")
 		return
-	} else {
-		log.Println("Valid signature!")
 	}
-
-	switch event {
-	case "push":
-		handlePush(data)
+	agentFile := config.RedditAgentFile
+	if config.RedditAgentFile == "" {
+		log.Println("No agent file specified, using reddit.agent")
+		agentFile = "reddit.agent"
 	}
-}
+	bot := &RedditBot{}
 
-func handlePush(data []byte) {
-	var pushEvent github.PushEvent
-	err := json.Unmarshal(data, &pushEvent)
-
+	subs := make([]string, 0)
+	for _, v := range config.Reddit {
+		subs = append(subs, v.Sub)
+	}
+	log.Println("Running graw on ", subs)
+	err := graw.Scrape(agentFile, bot, subs...)
 	if err != nil {
-		panic(err)
+		log.Println("Error running graw:", err)
 	}
-
-	pusher := ""
-	if pushEvent.Pusher.Name != nil {
-		pusher = *pushEvent.Pusher.Name
-	}
-
-	header := fmt.Sprintf("**%s** Pushed %d commit(s)", pusher, len(pushEvent.Commits))
-	body := ""
-	for _, v := range pushEvent.Commits {
-		url := ""
-		if v.URL != nil {
-			url = *v.URL
-		}
-
-		name := ""
-		if v.Author.Login != nil {
-			name = *v.Author.Login
-		} else if v.Author.Name != nil {
-			name = *v.Author.Name
-		}
-
-		msg := ""
-		if v.Message != nil {
-			msg = *v.Message
-		}
-
-		body += fmt.Sprintf("%s\n**%s**: %s\n", url, name, msg)
-	}
-
-	fullMessage := header + "\n" + body
-	log.Println("Sending message", fullMessage)
-	_, err = dgo.ChannelMessageSend(config.Channel, fullMessage)
-	if err != nil {
-		log.Println("Error sending message: ", err)
-	}
-}
-
-// CheckMAC reports whether messageMAC is a valid HMAC tag for message.
-func ValidateHMACDigest(message []byte, messageMAC string, key []byte) bool {
-	mac := hmac.New(sha1.New, key)
-	mac.Write(message)
-
-	expectedMAC := fmt.Sprintf("sha1=%x", mac.Sum(nil))
-	return expectedMAC == messageMAC
 }

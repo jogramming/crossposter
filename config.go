@@ -6,11 +6,24 @@ import (
 )
 
 type Config struct {
-	Token   string `json:"token"`
-	Secret  string `json:"secret"`
+	Token  string `json:"token"`
+	Listen string `json:"listen"`
+
+	RedditAgentFile string `json:"reddit_agent_file"`
+
+	Github []GithubConfig `json:"github"`
+	Reddit []RedditConfig `json:"reddit"`
+}
+
+type GithubConfig struct {
+	Repo    string `json:"repo"`
 	Channel string `json:"channel"`
-	Guild   string `json:"guild"`
-	Listen  string `json:"listen"`
+	Secret  string `json:"secret"`
+}
+
+type RedditConfig struct {
+	Sub     string `json:"sub"`
+	Channel string `json:"channel"`
 }
 
 func LoadConfig(path string) (*Config, error) {
