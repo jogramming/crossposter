@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jonas747/discordgo"
+	"github.com/bwmarrin/discordgo"
 	"github.com/turnage/graw"
 	"log"
 	"net/http"
@@ -60,7 +60,7 @@ func RunReddit() {
 		subs = append(subs, v.Sub)
 	}
 	log.Println("Running graw on ", subs)
-	err := graw.Scrape(agentFile, bot, subs...)
+	err := graw.Run(agentFile, bot, subs...)
 	if err != nil {
 		log.Println("Error running graw:", err)
 	}

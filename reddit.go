@@ -45,7 +45,7 @@ func (r *RedditBot) Post(post *redditproto.Link) {
 		typeStr = "self post"
 	}
 
-	body := fmt.Sprintf("/u/**%s** Posted a new %s in **/r/%s**:\n**%s**\n%s\n", author, typeStr, sub, post.GetTitle(), post.GetPermalink())
+	body := fmt.Sprintf("/u/**%s** Posted a new %s in **/r/%s**:\n**%s**\n%s\n", author, typeStr, sub, post.GetTitle(), "http://reddit.com/"+post.GetPermalink())
 
 	if post.GetIsSelf() {
 		body += fmt.Sprintf("*%s*", post.GetSelftext())
